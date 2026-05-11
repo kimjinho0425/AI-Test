@@ -121,17 +121,17 @@ def main():
         fastest = min(ma_time, nn_time, hd_time)
         st.info(f"💡 현재 {test_size}개 데이터 기준\n최단 응답 속도: **{fastest:.2f}ms**")
 
-    # --- 2. 하단: 수학적 계산 원리 (LaTeX 수식 포함) ---
+    # --- 2. 하단: 수학적 계산 원리 (LaTeX 수식 오류 수정됨) ---
     st.divider()
     st.header("🧮 알고리즘별 계산 방법 및 수학적 배경")
-    st.markdown("수만 개의 데이터 중 연속된 3개의 윈도우 신호를 $x_{i-1}$ (과거), $x_i$ (현재), $x_{i+1}$ (미래)라고 할 때, 각 필터는 다음의 계산식을 거쳐 최종 출력 $y_i$를 결정합니다.")
+    st.markdown(r"수만 개의 데이터 중 연속된 3개의 윈도우 신호를 $x_{i-1}$ (과거), $x_i$ (현재), $x_{i+1}$ (미래)라고 할 때, 각 필터는 다음의 계산식을 거쳐 최종 출력 $y_i$를 결정합니다.")
 
     exp1, exp2, exp3 = st.columns(3)
 
     with exp1:
         st.info("📊 단순 평균 (Moving Average)")
         st.markdown("**계산 공식:**")
-        st.latex(r"$$y_i = \begin{cases} 1, & \text{if } \frac{x_{i-1} + x_i + x_{i+1}}{3} \ge 0.5 \\ 0, & \text{otherwise} \end{cases}$$")
+        st.markdown(r"$$y_i = \begin{cases} 1, & \text{if } \frac{x_{i-1} + x_i + x_{i+1}}{3} \ge 0.5 \\ 0, & \text{otherwise} \end{cases}$$")
         st.markdown("""
         **작동 원리:**
         3개 신호의 산술 평균을 구한 뒤, 반올림을 수행합니다. 
@@ -141,7 +141,7 @@ def main():
     with exp2:
         st.success("🤖 퍼셉트론 (Perceptron)")
         st.markdown("**계산 공식:**")
-        st.latex(r"$$y_i = f\left(\sum_{j=1}^{3} w_j x_j + b\right)$$")
+        st.markdown(r"$$y_i = f\left(\sum_{j=1}^{3} w_j x_j + b\right)$$")
         st.markdown(f"""
         **현재 가중치 설정:**
         * $w$ (가중치) = `[0.7, 1.2, 0.7]`
@@ -154,7 +154,7 @@ def main():
     with exp3:
         st.warning("📐 해밍 거리 (Hamming Distance)")
         st.markdown("**계산 공식:**")
-        st.latex(r"$$D_H = \sum_{k=1}^{3} | u_k - v_k |$$")
+        st.markdown(r"$$D_H = \sum_{k=1}^{3} | u_k - v_k |$$")
         st.markdown("""
         **작동 원리:**
         입력된 3개의 신호를 이상적인 패턴 `[0,0,0]` 및 `[1,1,1]`과 비교합니다.
