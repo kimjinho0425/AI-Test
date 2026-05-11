@@ -64,24 +64,57 @@ def main():
     st.divider()
 
     # 사이드바 설정
-    st.sidebar.header("변수 설정")
-    noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
-    test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
+    st.sidebar.header("🛠️ 시뮬레이션 환경 설정")
     
-    st.sidebar.divider()
-    st.sidebar.subheader("상세 계산 데이터 선택")
-    calc_idx = st.sidebar.slider("계산해볼 데이터 인덱스", min_value=1, max_value=test_size-2, value=15)
+    # 입력 모드 선택기 추가
+    input_mode = st.sidebar.radio(
+        "데이터 입력 방식 선택",
+        ("🎲 랜덤 확률 시뮬레이션", "📝 실제 센서 데이터 직접 기입")
+    )
 
-    # 데이터 생성
-    pattern = [0]*20 + [1]*20
-    base_signal = (pattern * (test_size // 40 + 1))[:test_size]
+    if input_mode == "🎲 랜덤 확률 시뮬레이션":
+        noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
+        test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
+        
+        # 이상적인 정답 신호 생성 (주기 40)
+        pattern = [0]*20 + [1]*20
+        base_signal = (pattern * (test_size // 40 + 1))[:test_size]
+        
+        noisy_signal = []
+        for val in base_signal:
+            if random.randint(1, 100) <= noise_level:
+                noisy_signal.append(1 - val)
+            else:
+                noisy_signal.append(val)
+    else:
+        st.sidebar.markdown("현장에서 추출한 `0`과 `1`의 연속된 데이터를 아래에 붙여넣기 하세요. (공백이나 줄바꿈은 무시됩니다)")
+        
+        # 기본 예시 데이터 제공
+        default_custom_data = "0000000100000000000011111101111111111111" * 10 
+        custom_input = st.sidebar.text_area("실제 노이즈 데이터 기입", value=default_custom_data, height=150)
+        
+        # 입력된 텍스트에서 0과 1만 추출하여 리스트로 변환
+        noisy_signal = [int(char) for char in custom_input if char in '01']
+        
+        if len(noisy_signal) < 10:
+            st.error("⚠️ 데이터를 분석하려면 최소 10개 이상의 0과 1이 필요합니다!")
+            st.stop()
+            
+        test_size = len(noisy_signal)
+        
+        # 정확도 비교를 위해 입력 길이와 똑같은 '정상 신호'를 가상으로 깔아줌
+        pattern = [0]*20 + [1]*20
+        base_signal = (pattern * (test_size // 40 + 1))[:test_size]
+        
+        st.sidebar.success(f"✅ 총 {test_size}개의 실제 데이터가 정상적으로 인식되었습니다!")
+
+    st.sidebar.divider()
+    st.sidebar.subheader("🧮 상세 계산 데이터 선택")
+    st.sidebar.markdown("아래 슬라이더를 움직여 특정 시점의 데이터 계산 과정을 확인하세요.")
     
-    noisy_signal = []
-    for val in base_signal:
-        if random.randint(1, 100) <= noise_level:
-            noisy_signal.append(1 - val)
-        else:
-            noisy_signal.append(val)
+    # 데이터 크기에 맞춰 슬라이더 최대값 자동 조절 방어코드
+    max_slider_val = max(1, test_size - 2)
+    calc_idx = st.sidebar.slider("계산해볼 데이터 인덱스", min_value=1, max_value=max_slider_val, value=min(15, max_slider_val))
 
     # 선택된 인덱스의 과거, 현재, 미래 데이터 추출
     ex_past = noisy_signal[calc_idx - 1]
@@ -101,20 +134,22 @@ def main():
     col1, col2 = st.columns([2.5, 1])
 
     with col1:
-        st.subheader("실시간 신호 복원 상태")
+        st.subheader("📈 실시간 신호 복원 상태 (로직 애널라이저 뷰)")
         fig = make_subplots(
             rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.05,
-            subplot_titles=("1. 이상적인 신호", "2. 노이즈 신호", "3. 단순평균 필터", "4. 해밍거리 정정", "5. 퍼셉트론 정정")
+            subplot_titles=("1. 정답 신호 기준 (참고용)", "2. 입력된 노이즈 신호", "3. 단순평균 필터", "4. 해밍거리 정정", "5. 퍼셉트론 정정")
         )
 
-        fig.add_trace(go.Scatter(y=base_signal[:200], line=dict(color='#1f77b4', width=2, shape='hv'), name="정답"), row=1, col=1)
-        fig.add_trace(go.Scatter(y=noisy_signal[:200], line=dict(color='#d62728', width=1.5, shape='hv'), name="노이즈"), row=2, col=1)
-        fig.add_trace(go.Scatter(y=ma_result[:200], line=dict(color='#9467bd', width=2, shape='hv'), name="단순평균"), row=3, col=1)
-        fig.add_trace(go.Scatter(y=hd_result[:200], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=4, col=1)
-        fig.add_trace(go.Scatter(y=nn_result[:200], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=5, col=1)
+        view_limit = min(200, test_size) # 최대 200개까지만 그래프에 표시
+        
+        fig.add_trace(go.Scatter(y=base_signal[:view_limit], line=dict(color='#1f77b4', width=2, shape='hv'), name="정답"), row=1, col=1)
+        fig.add_trace(go.Scatter(y=noisy_signal[:view_limit], line=dict(color='#d62728', width=1.5, shape='hv'), name="노이즈"), row=2, col=1)
+        fig.add_trace(go.Scatter(y=ma_result[:view_limit], line=dict(color='#9467bd', width=2, shape='hv'), name="단순평균"), row=3, col=1)
+        fig.add_trace(go.Scatter(y=hd_result[:view_limit], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=4, col=1)
+        fig.add_trace(go.Scatter(y=nn_result[:view_limit], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=5, col=1)
 
-        # 선택된 인덱스 위치에 세로선 표시 (시각적 피드백)
-        if calc_idx < 200:
+        # 선택된 인덱스 위치에 세로선 표시
+        if calc_idx < view_limit:
             for row in range(1, 6):
                 fig.add_vline(x=calc_idx, line_width=2, line_dash="dash", line_color="black", row=row, col=1)
 
@@ -135,15 +170,15 @@ def main():
         
         fastest = min(ma_time, nn_time, hd_time)
         st.info(f"💡 현재 {test_size}개 데이터 기준\n최단 응답 속도: **{fastest:.2f}ms**")
+        if input_mode == "📝 실제 센서 데이터 직접 기입":
+            st.caption("※ 실제 데이터 입력 시, 정확도(%)는 가상의 이상적인 신호를 기준으로 계산된 참고 수치입니다.")
 
     # --- 2. 하단: 수학적 계산 원리 및 실시간 동적 계산 ---
     st.divider()
     st.header("🧮 알고리즘별 계산 방법 및 실시간 데이터 검증")
-    st.markdown(f"사이드바에서 선택한 **인덱스 {calc_idx}번**의 노이즈 데이터를 각 수식에 대입하여 실시간으로 계산합니다.")
+    st.markdown(f"사이드바에서 선택한 **인덱스 {calc_idx}번**의 윈도우 데이터를 각 수식에 대입하여 실시간으로 계산합니다.")
     
-    # 노이즈 여부 시각적 강조
-    is_noisy = "⚠️ 노이즈 발생!" if ex_curr != ex_base else "✅ 정상 신호"
-    st.code(f"원래 정답: {ex_base}  --->  현재 센서 입력 윈도우: [{ex_past}, {ex_curr}, {ex_next}]  ({is_noisy})", language="text")
+    st.code(f"현재 센서 입력 윈도우: [ {ex_past}, {ex_curr}, {ex_next} ]", language="text")
 
     exp1, exp2, exp3 = st.columns(3)
 
