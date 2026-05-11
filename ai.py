@@ -66,10 +66,15 @@ def main():
     # 사이드바 설정
     st.sidebar.header("🛠️ 시뮬레이션 환경 설정")
     noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
-    test_size = st.sidebar.select_slider("테스트 데이터 크기", options=[1000, 5000, 10000, 50000])
+    
+    # [수정] 데이터 크기를 100단위로 조절 가능한 슬라이더로 변경
+    test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
 
     # 데이터 생성
-    base_signal = ([0]*20 + [1]*20) * (test_size // 40)
+    # 신호 주기를 일정하게 유지하기 위해 반복 생성
+    pattern = [0]*20 + [1]*20
+    base_signal = (pattern * (test_size // 40 + 1))[:test_size]
+    
     noisy_signal = []
     for val in base_signal:
         if random.randint(1, 100) <= noise_level:
@@ -77,7 +82,7 @@ def main():
         else:
             noisy_signal.append(val)
 
-    # 필터 적용
+    # 각 알고리즘 적용 및 시간 측정
     ma_result, ma_time = apply_moving_average(noisy_signal)
     nn_result, nn_time = apply_perceptron(noisy_signal)
     hd_result, hd_time = apply_hamming_correction(noisy_signal)
@@ -85,29 +90,36 @@ def main():
     def get_acc(res, base):
         return (sum([1 for r, b in zip(res, base) if r == b]) / len(base)) * 100
 
-    # --- 시각화 섹션 (가시성 대폭 개선) ---
+    # --- 시각화 섹션 ---
     col1, col2 = st.columns([2.5, 1])
 
     with col1:
         st.subheader("📈 실시간 신호 복원 상태 (로직 애널라이저 뷰)")
         
-        # Plotly를 이용한 다중 계단형(Step) 차트 생성
+        # [수정] 5개의 서브플롯 생성 (단순평균 추가)
         fig = make_subplots(
-            rows=4, cols=1, 
+            rows=5, cols=1, 
             shared_xaxes=True, 
-            vertical_spacing=0.08,
-            subplot_titles=("1. 정답 신호 (파란색)", "2. 노이즈 발생 신호 (빨간색)", "3. 해밍거리 정정 (초록색)", "4. 퍼셉트론 정정 (주황색)")
+            vertical_spacing=0.05,
+            subplot_titles=(
+                "1. 정답 신호 (파란색)", 
+                "2. 노이즈 발생 신호 (빨간색)", 
+                "3. 단순평균 필터 (보라색)", 
+                "4. 해밍거리 정정 (초록색)", 
+                "5. 퍼셉트론 정정 (주황색)"
+            )
         )
 
-        # shape='hv' 옵션이 디지털 신호를 직각(계단형)으로 그려줍니다.
+        # 각 그래프 추가 (디지털 신호이므로 계단형 'hv' 사용)
         fig.add_trace(go.Scatter(y=base_signal[:200], line=dict(color='#1f77b4', width=2, shape='hv'), name="정답"), row=1, col=1)
         fig.add_trace(go.Scatter(y=noisy_signal[:200], line=dict(color='#d62728', width=1.5, shape='hv'), name="노이즈"), row=2, col=1)
-        fig.add_trace(go.Scatter(y=hd_result[:200], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=3, col=1)
-        fig.add_trace(go.Scatter(y=nn_result[:200], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=4, col=1)
+        fig.add_trace(go.Scatter(y=ma_result[:200], line=dict(color='#9467bd', width=2, shape='hv'), name="단순평균"), row=3, col=1)
+        fig.add_trace(go.Scatter(y=hd_result[:200], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=4, col=1)
+        fig.add_trace(go.Scatter(y=nn_result[:200], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=5, col=1)
 
-        # Y축을 0과 1로 고정하여 깔끔하게 표시
+        # 디자인 조정
         fig.update_yaxes(tickvals=[0, 1], range=[-0.2, 1.2])
-        fig.update_layout(height=650, showlegend=False, margin=dict(t=40, b=20, l=20, r=20))
+        fig.update_layout(height=800, showlegend=False, margin=dict(t=40, b=20, l=20, r=20))
         
         st.plotly_chart(fig, use_container_width=True)
 
@@ -120,10 +132,10 @@ def main():
                          f"{get_acc(hd_result, base_signal):.2f}%"],
             "시간 (ms)": [f"{ma_time:.2f}", f"{nn_time:.2f}", f"{hd_time:.2f}"]
         }
-        st.dataframe(pd.DataFrame(summary_data), hide_index=True)
+        st.table(pd.DataFrame(summary_data))
         
         fastest = min(ma_time, nn_time, hd_time)
-        st.info(f"💡 가장 빠른 응답 속도: **{fastest:.2f}ms**")
+        st.info(f"💡 테스트 데이터 {test_size}개 처리 중\n최단 응답 속도: **{fastest:.2f}ms**")
 
 if __name__ == "__main__":
     main()
