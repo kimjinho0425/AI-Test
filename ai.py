@@ -99,17 +99,36 @@ def main():
     # --- 결과 시각화 섹션 ---
     col1, col2 = st.columns([2, 1])
 
+    # --- 결과 시각화 섹션 ---
+    col1, col2 = st.columns([2, 1])
+
     with col1:
         st.subheader("📈 실시간 신호 복원 성능 (앞부분 200개 데이터)")
-        plot_df = pd.DataFrame({
+        st.caption("신호가 겹쳐서 보이지 않도록 필터별로 그래프를 분리했습니다.")
+
+        # 1. 노이즈 상황 (정답 vs 노이즈)
+        st.write("🔴 **1. 노이즈 발생 신호** (원본 데이터)")
+        st.line_chart(pd.DataFrame({
             "정답(Ideal)": base_signal[:200],
-            "노이즈(Noisy)": noisy_signal[:200],
-            "해밍거리 정정": hd_result[:200],
+            "노이즈(Noisy)": noisy_signal[:200]
+        }), height=180)
+
+        # 2. 해밍거리 결과 (정답 vs 해밍거리)
+        st.write("🔵 **2. 해밍거리 정정 결과**")
+        st.line_chart(pd.DataFrame({
+            "정답(Ideal)": base_signal[:200],
+            "해밍거리 정정": hd_result[:200]
+        }), height=180)
+
+        # 3. 퍼셉트론 결과 (정답 vs 퍼셉트론)
+        st.write("🟢 **3. 퍼셉트론(NN) 필터링 결과**")
+        st.line_chart(pd.DataFrame({
+            "정답(Ideal)": base_signal[:200],
             "퍼셉트론 결과": nn_result[:200]
-        })
-        st.line_chart(plot_df)
+        }), height=180)
 
     with col2:
+        # ... (이하 col2 코드는 기존과 동일하게 유지) ...
         st.subheader("⏱️ 연산 효율 및 정확도")
         # 데이터프레임으로 요약 결과 표시
         summary_data = {
