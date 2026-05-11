@@ -66,12 +66,9 @@ def main():
     # 사이드바 설정
     st.sidebar.header("🛠️ 시뮬레이션 환경 설정")
     noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
-    
-    # [수정] 데이터 크기를 100단위로 조절 가능한 슬라이더로 변경
     test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
 
     # 데이터 생성
-    # 신호 주기를 일정하게 유지하기 위해 반복 생성
     pattern = [0]*20 + [1]*20
     base_signal = (pattern * (test_size // 40 + 1))[:test_size]
     
@@ -82,7 +79,7 @@ def main():
         else:
             noisy_signal.append(val)
 
-    # 각 알고리즘 적용 및 시간 측정
+    # 필터 적용
     ma_result, ma_time = apply_moving_average(noisy_signal)
     nn_result, nn_time = apply_perceptron(noisy_signal)
     hd_result, hd_time = apply_hamming_correction(noisy_signal)
@@ -90,37 +87,24 @@ def main():
     def get_acc(res, base):
         return (sum([1 for r, b in zip(res, base) if r == b]) / len(base)) * 100
 
-    # --- 시각화 섹션 ---
+    # --- 1. 상단: 시각화 및 결과 요약 ---
     col1, col2 = st.columns([2.5, 1])
 
     with col1:
         st.subheader("📈 실시간 신호 복원 상태 (로직 애널라이저 뷰)")
-        
-        # [수정] 5개의 서브플롯 생성 (단순평균 추가)
         fig = make_subplots(
-            rows=5, cols=1, 
-            shared_xaxes=True, 
-            vertical_spacing=0.05,
-            subplot_titles=(
-                "1. 정답 신호 (파란색)", 
-                "2. 노이즈 발생 신호 (빨간색)", 
-                "3. 단순평균 필터 (보라색)", 
-                "4. 해밍거리 정정 (초록색)", 
-                "5. 퍼셉트론 정정 (주황색)"
-            )
+            rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.05,
+            subplot_titles=("1. 정답 신호", "2. 노이즈 신호", "3. 단순평균 필터", "4. 해밍거리 정정", "5. 퍼셉트론 정정")
         )
 
-        # 각 그래프 추가 (디지털 신호이므로 계단형 'hv' 사용)
         fig.add_trace(go.Scatter(y=base_signal[:200], line=dict(color='#1f77b4', width=2, shape='hv'), name="정답"), row=1, col=1)
         fig.add_trace(go.Scatter(y=noisy_signal[:200], line=dict(color='#d62728', width=1.5, shape='hv'), name="노이즈"), row=2, col=1)
         fig.add_trace(go.Scatter(y=ma_result[:200], line=dict(color='#9467bd', width=2, shape='hv'), name="단순평균"), row=3, col=1)
         fig.add_trace(go.Scatter(y=hd_result[:200], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=4, col=1)
         fig.add_trace(go.Scatter(y=nn_result[:200], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=5, col=1)
 
-        # 디자인 조정
         fig.update_yaxes(tickvals=[0, 1], range=[-0.2, 1.2])
         fig.update_layout(height=800, showlegend=False, margin=dict(t=40, b=20, l=20, r=20))
-        
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
@@ -135,7 +119,47 @@ def main():
         st.table(pd.DataFrame(summary_data))
         
         fastest = min(ma_time, nn_time, hd_time)
-        st.info(f"💡 테스트 데이터 {test_size}개 처리 중\n최단 응답 속도: **{fastest:.2f}ms**")
+        st.info(f"💡 현재 {test_size}개 데이터 기준\n최단 응답 속도: **{fastest:.2f}ms**")
+
+    # --- 2. 하단: 수학적 계산 원리 (LaTeX 수식 포함) ---
+    st.divider()
+    st.header("🧮 알고리즘별 계산 방법 및 수학적 배경")
+    st.markdown("수만 개의 데이터 중 연속된 3개의 윈도우 신호를 $x_{i-1}$ (과거), $x_i$ (현재), $x_{i+1}$ (미래)라고 할 때, 각 필터는 다음의 계산식을 거쳐 최종 출력 $y_i$를 결정합니다.")
+
+    exp1, exp2, exp3 = st.columns(3)
+
+    with exp1:
+        st.info("📊 단순 평균 (Moving Average)")
+        st.markdown("**계산 공식:**")
+        st.latex(r"$$y_i = \begin{cases} 1, & \text{if } \frac{x_{i-1} + x_i + x_{i+1}}{3} \ge 0.5 \\ 0, & \text{otherwise} \end{cases}$$")
+        st.markdown("""
+        **작동 원리:**
+        3개 신호의 산술 평균을 구한 뒤, 반올림을 수행합니다. 
+        즉, 3개 중 1이 두 번 이상 등장하면 1로 출력하는 **완벽한 다수결 논리**를 따릅니다.
+        """)
+
+    with exp2:
+        st.success("🤖 퍼셉트론 (Perceptron)")
+        st.markdown("**계산 공식:**")
+        st.latex(r"$$y_i = f\left(\sum_{j=1}^{3} w_j x_j + b\right)$$")
+        st.markdown(f"""
+        **현재 가중치 설정:**
+        * $w$ (가중치) = `[0.7, 1.2, 0.7]`
+        * $b$ (편향) = `-1.0`
+        
+        **작동 원리:**
+        단순 다수결이 아니라, **현재 값($x_i$)에 가장 큰 가중치(1.2)**를 둡니다. 가중합이 0을 넘으면(활성화 함수) 1을 출력합니다.
+        """)
+
+    with exp3:
+        st.warning("📐 해밍 거리 (Hamming Distance)")
+        st.markdown("**계산 공식:**")
+        st.latex(r"$$D_H = \sum_{k=1}^{3} | u_k - v_k |$$")
+        st.markdown("""
+        **작동 원리:**
+        입력된 3개의 신호를 이상적인 패턴 `[0,0,0]` 및 `[1,1,1]`과 비교합니다.
+        서로 다른 비트의 개수(해밍 거리)를 세어, **거리가 더 짧은 (더 유사한) 패턴**의 값으로 에러를 정정합니다.
+        """)
 
 if __name__ == "__main__":
     main()
