@@ -64,14 +64,12 @@ def main():
     st.divider()
 
     # 사이드바 설정
-    st.sidebar.header("🛠️ 시뮬레이션 환경 설정")
+    st.sidebar.header("변수 설정")
     noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
     test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
     
     st.sidebar.divider()
-    st.sidebar.subheader("🧮 상세 계산 데이터 선택")
-    st.sidebar.markdown("아래 슬라이더를 움직여 특정 시점의 데이터가 어떻게 계산되는지 확인해보세요.")
-    # 동적 계산을 위한 인덱스 선택기 (1부터 test_size-2 까지만 선택 가능 - 앞뒤 데이터가 필요하므로)
+    st.sidebar.subheader("상세 계산 데이터 선택")
     calc_idx = st.sidebar.slider("계산해볼 데이터 인덱스", min_value=1, max_value=test_size-2, value=15)
 
     # 데이터 생성
@@ -103,10 +101,10 @@ def main():
     col1, col2 = st.columns([2.5, 1])
 
     with col1:
-        st.subheader("📈 실시간 신호 복원 상태 (로직 애널라이저 뷰)")
+        st.subheader("실시간 신호 복원 상태")
         fig = make_subplots(
             rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.05,
-            subplot_titles=("1. 정답 신호", "2. 노이즈 신호", "3. 단순평균 필터", "4. 해밍거리 정정", "5. 퍼셉트론 정정")
+            subplot_titles=("1. 이상적인 신호", "2. 노이즈 신호", "3. 단순평균 필터", "4. 해밍거리 정정", "5. 퍼셉트론 정정")
         )
 
         fig.add_trace(go.Scatter(y=base_signal[:200], line=dict(color='#1f77b4', width=2, shape='hv'), name="정답"), row=1, col=1)
