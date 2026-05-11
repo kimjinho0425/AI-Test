@@ -79,6 +79,18 @@ def main():
         else:
             noisy_signal.append(val)
 
+    # 계산 예시를 위해 노이즈가 발생한 첫 번째 인덱스 찾기
+    example_idx = 1
+    for i in range(1, len(noisy_signal) - 1):
+        if noisy_signal[i] != base_signal[i]:  # 정답과 다른 곳(노이즈 발생 구간)
+            example_idx = i
+            break
+            
+    ex_past = noisy_signal[example_idx - 1]
+    ex_curr = noisy_signal[example_idx]
+    ex_next = noisy_signal[example_idx + 1]
+    ex_base = base_signal[example_idx]
+
     # 필터 적용
     ma_result, ma_time = apply_moving_average(noisy_signal)
     nn_result, nn_time = apply_perceptron(noisy_signal)
@@ -121,45 +133,56 @@ def main():
         fastest = min(ma_time, nn_time, hd_time)
         st.info(f"💡 현재 {test_size}개 데이터 기준\n최단 응답 속도: **{fastest:.2f}ms**")
 
-    # --- 2. 하단: 수학적 계산 원리 (LaTeX 수식 오류 수정됨) ---
+    # --- 2. 하단: 수학적 계산 원리 및 실제 데이터 대입 ---
     st.divider()
-    st.header("🧮 알고리즘별 계산 방법 및 수학적 배경")
-    st.markdown(r"수만 개의 데이터 중 연속된 3개의 윈도우 신호를 $x_{i-1}$ (과거), $x_i$ (현재), $x_{i+1}$ (미래)라고 할 때, 각 필터는 다음의 계산식을 거쳐 최종 출력 $y_i$를 결정합니다.")
+    st.header("🧮 알고리즘별 계산 방법 및 실제 데이터 검증")
+    st.markdown(f"시뮬레이션 중 노이즈가 발생한 **인덱스 {example_idx}번** 데이터를 추출하여 각 수식에 대입해 봅니다.")
+    
+    st.code(f"원래 정답: {ex_base}  --->  발생한 노이즈 윈도우: [{ex_past}, {ex_curr}, {ex_next}]", language="text")
 
     exp1, exp2, exp3 = st.columns(3)
 
     with exp1:
         st.info("📊 단순 평균 (Moving Average)")
-        st.markdown("**계산 공식:**")
         st.markdown(r"$$y_i = \begin{cases} 1, & \text{if } \frac{x_{i-1} + x_i + x_{i+1}}{3} \ge 0.5 \\ 0, & \text{otherwise} \end{cases}$$")
-        st.markdown("""
-        **작동 원리:**
-        3개 신호의 산술 평균을 구한 뒤, 반올림을 수행합니다. 
-        즉, 3개 중 1이 두 번 이상 등장하면 1로 출력하는 **완벽한 다수결 논리**를 따릅니다.
-        """)
+        
+        avg_val = (ex_past + ex_curr + ex_next) / 3.0
+        ma_final = 1 if avg_val >= 0.5 else 0
+        
+        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown(f"1. 세 값의 합: **{ex_past} + {ex_curr} + {ex_next}** = **{ex_past+ex_curr+ex_next}**")
+        st.markdown(f"2. 평균 계산: **{ex_past+ex_curr+ex_next} / 3** = **{avg_val:.2f}**")
+        st.markdown(f"3. 판정: **{avg_val:.2f}**는 0.5 이상인가? {'**예**' if avg_val >= 0.5 else '**아니오**'}")
+        st.markdown(f"👉 **최종 출력값: {ma_final}**")
 
     with exp2:
         st.success("🤖 퍼셉트론 (Perceptron)")
-        st.markdown("**계산 공식:**")
         st.markdown(r"$$y_i = f\left(\sum_{j=1}^{3} w_j x_j + b\right)$$")
-        st.markdown(f"""
-        **현재 가중치 설정:**
-        * $w$ (가중치) = `[0.7, 1.2, 0.7]`
-        * $b$ (편향) = `-1.0`
         
-        **작동 원리:**
-        단순 다수결이 아니라, **현재 값($x_i$)에 가장 큰 가중치(1.2)**를 둡니다. 가중합이 0을 넘으면(활성화 함수) 1을 출력합니다.
-        """)
+        w_sum = (ex_past*0.7) + (ex_curr*1.2) + (ex_next*0.7) - 1.0
+        nn_final = 1 if w_sum > 0 else 0
+        
+        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown(f"1. 가중치 곱셈: ({ex_past}×0.7) + ({ex_curr}×1.2) + ({ex_next}×0.7)")
+        st.markdown(f"2. 편향(Bias) 더하기: **{(ex_past*0.7) + (ex_curr*1.2) + (ex_next*0.7):.2f} - 1.0**")
+        st.markdown(f"3. 가중합 결과: **{w_sum:.2f}**")
+        st.markdown(f"4. 활성화 함수: **{w_sum:.2f}** > 0 인가? {'**예**' if w_sum > 0 else '**아니오**'}")
+        st.markdown(f"👉 **최종 출력값: {nn_final}**")
 
     with exp3:
         st.warning("📐 해밍 거리 (Hamming Distance)")
-        st.markdown("**계산 공식:**")
         st.markdown(r"$$D_H = \sum_{k=1}^{3} | u_k - v_k |$$")
-        st.markdown("""
-        **작동 원리:**
-        입력된 3개의 신호를 이상적인 패턴 `[0,0,0]` 및 `[1,1,1]`과 비교합니다.
-        서로 다른 비트의 개수(해밍 거리)를 세어, **거리가 더 짧은 (더 유사한) 패턴**의 값으로 에러를 정정합니다.
-        """)
+        
+        dist_0 = sum([1 for j, v in enumerate([ex_past, ex_curr, ex_next]) if v != [0,0,0][j]])
+        dist_1 = sum([1 for j, v in enumerate([ex_past, ex_curr, ex_next]) if v != [1,1,1][j]])
+        hd_final = 0 if dist_0 < dist_1 else 1
+        
+        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown(f"현재 윈도우: `[{ex_past}, {ex_curr}, {ex_next}]`")
+        st.markdown(f"1. `[0,0,0]`과의 거리: 다른 비트 **{dist_0}개**")
+        st.markdown(f"2. `[1,1,1]`과의 거리: 다른 비트 **{dist_1}개**")
+        st.markdown(f"3. 비교: 어느 패턴과 더 가까운가? **{hd_final}**")
+        st.markdown(f"👉 **최종 출력값: {hd_final}**")
 
 if __name__ == "__main__":
     main()
