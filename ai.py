@@ -67,6 +67,12 @@ def main():
     st.sidebar.header("🛠️ 시뮬레이션 환경 설정")
     noise_level = st.sidebar.slider("노이즈 확률 (%)", 0, 50, 20)
     test_size = st.sidebar.slider("테스트 데이터 크기", min_value=100, max_value=20000, value=1000, step=100)
+    
+    st.sidebar.divider()
+    st.sidebar.subheader("🧮 상세 계산 데이터 선택")
+    st.sidebar.markdown("아래 슬라이더를 움직여 특정 시점의 데이터가 어떻게 계산되는지 확인해보세요.")
+    # 동적 계산을 위한 인덱스 선택기 (1부터 test_size-2 까지만 선택 가능 - 앞뒤 데이터가 필요하므로)
+    calc_idx = st.sidebar.slider("계산해볼 데이터 인덱스", min_value=1, max_value=test_size-2, value=15)
 
     # 데이터 생성
     pattern = [0]*20 + [1]*20
@@ -79,17 +85,11 @@ def main():
         else:
             noisy_signal.append(val)
 
-    # 계산 예시를 위해 노이즈가 발생한 첫 번째 인덱스 찾기
-    example_idx = 1
-    for i in range(1, len(noisy_signal) - 1):
-        if noisy_signal[i] != base_signal[i]:  # 정답과 다른 곳(노이즈 발생 구간)
-            example_idx = i
-            break
-            
-    ex_past = noisy_signal[example_idx - 1]
-    ex_curr = noisy_signal[example_idx]
-    ex_next = noisy_signal[example_idx + 1]
-    ex_base = base_signal[example_idx]
+    # 선택된 인덱스의 과거, 현재, 미래 데이터 추출
+    ex_past = noisy_signal[calc_idx - 1]
+    ex_curr = noisy_signal[calc_idx]
+    ex_next = noisy_signal[calc_idx + 1]
+    ex_base = base_signal[calc_idx]
 
     # 필터 적용
     ma_result, ma_time = apply_moving_average(noisy_signal)
@@ -115,6 +115,11 @@ def main():
         fig.add_trace(go.Scatter(y=hd_result[:200], line=dict(color='#2ca02c', width=2, shape='hv'), name="해밍거리"), row=4, col=1)
         fig.add_trace(go.Scatter(y=nn_result[:200], line=dict(color='#ff7f0e', width=2, shape='hv'), name="퍼셉트론"), row=5, col=1)
 
+        # 선택된 인덱스 위치에 세로선 표시 (시각적 피드백)
+        if calc_idx < 200:
+            for row in range(1, 6):
+                fig.add_vline(x=calc_idx, line_width=2, line_dash="dash", line_color="black", row=row, col=1)
+
         fig.update_yaxes(tickvals=[0, 1], range=[-0.2, 1.2])
         fig.update_layout(height=800, showlegend=False, margin=dict(t=40, b=20, l=20, r=20))
         st.plotly_chart(fig, use_container_width=True)
@@ -133,12 +138,14 @@ def main():
         fastest = min(ma_time, nn_time, hd_time)
         st.info(f"💡 현재 {test_size}개 데이터 기준\n최단 응답 속도: **{fastest:.2f}ms**")
 
-    # --- 2. 하단: 수학적 계산 원리 및 실제 데이터 대입 ---
+    # --- 2. 하단: 수학적 계산 원리 및 실시간 동적 계산 ---
     st.divider()
-    st.header("🧮 알고리즘별 계산 방법 및 실제 데이터 검증")
-    st.markdown(f"시뮬레이션 중 노이즈가 발생한 **인덱스 {example_idx}번** 데이터를 추출하여 각 수식에 대입해 봅니다.")
+    st.header("🧮 알고리즘별 계산 방법 및 실시간 데이터 검증")
+    st.markdown(f"사이드바에서 선택한 **인덱스 {calc_idx}번**의 노이즈 데이터를 각 수식에 대입하여 실시간으로 계산합니다.")
     
-    st.code(f"원래 정답: {ex_base}  --->  발생한 노이즈 윈도우: [{ex_past}, {ex_curr}, {ex_next}]", language="text")
+    # 노이즈 여부 시각적 강조
+    is_noisy = "⚠️ 노이즈 발생!" if ex_curr != ex_base else "✅ 정상 신호"
+    st.code(f"원래 정답: {ex_base}  --->  현재 센서 입력 윈도우: [{ex_past}, {ex_curr}, {ex_next}]  ({is_noisy})", language="text")
 
     exp1, exp2, exp3 = st.columns(3)
 
@@ -149,7 +156,7 @@ def main():
         avg_val = (ex_past + ex_curr + ex_next) / 3.0
         ma_final = 1 if avg_val >= 0.5 else 0
         
-        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown("**🔍 실시간 계산 결과:**")
         st.markdown(f"1. 세 값의 합: **{ex_past} + {ex_curr} + {ex_next}** = **{ex_past+ex_curr+ex_next}**")
         st.markdown(f"2. 평균 계산: **{ex_past+ex_curr+ex_next} / 3** = **{avg_val:.2f}**")
         st.markdown(f"3. 판정: **{avg_val:.2f}**는 0.5 이상인가? {'**예**' if avg_val >= 0.5 else '**아니오**'}")
@@ -162,7 +169,7 @@ def main():
         w_sum = (ex_past*0.7) + (ex_curr*1.2) + (ex_next*0.7) - 1.0
         nn_final = 1 if w_sum > 0 else 0
         
-        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown("**🔍 실시간 계산 결과:**")
         st.markdown(f"1. 가중치 곱셈: ({ex_past}×0.7) + ({ex_curr}×1.2) + ({ex_next}×0.7)")
         st.markdown(f"2. 편향(Bias) 더하기: **{(ex_past*0.7) + (ex_curr*1.2) + (ex_next*0.7):.2f} - 1.0**")
         st.markdown(f"3. 가중합 결과: **{w_sum:.2f}**")
@@ -177,7 +184,7 @@ def main():
         dist_1 = sum([1 for j, v in enumerate([ex_past, ex_curr, ex_next]) if v != [1,1,1][j]])
         hd_final = 0 if dist_0 < dist_1 else 1
         
-        st.markdown("**🔍 실제 데이터 대입:**")
+        st.markdown("**🔍 실시간 계산 결과:**")
         st.markdown(f"현재 윈도우: `[{ex_past}, {ex_curr}, {ex_next}]`")
         st.markdown(f"1. `[0,0,0]`과의 거리: 다른 비트 **{dist_0}개**")
         st.markdown(f"2. `[1,1,1]`과의 거리: 다른 비트 **{dist_1}개**")
