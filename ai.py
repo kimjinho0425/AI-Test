@@ -67,7 +67,6 @@ def main():
     
     with st.container():
         st.title("PLC 필터 진단 시스템")
-        st.markdown("수학적 수식과 가중치 연산 과정을 실시간으로 추적하는 통합 엔지니어링 환경입니다.")
         st.divider()
 
     # --- 사이드바 ---
