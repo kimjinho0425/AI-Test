@@ -118,7 +118,7 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        st.subheader("📈 통합 성능 리포트")
+        st.subheader("통합 성능 리포트")
         r_raw = get_roughness(raw)
         
         perf_df = pd.DataFrame({
