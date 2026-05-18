@@ -106,7 +106,7 @@ def main():
     with col1:
         st.subheader("필터링 비교")
         fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.05)
-        plots = [(raw, '원본 입력', 'red'), (ma_res, '단순 평균', 'purple'), (hd_res, '해밍 거리', 'green'), (nn_res, '퍼셉트론', 'orange')]
+        plots = [(raw, '원본 입력', 'red'), (ma_res, '이동 평균', 'purple'), (hd_res, '해밍 거리', 'green'), (nn_res, '퍼셉트론', 'orange')]
         
         calc_idx = st.slider("상세 분석할 인덱스를 선택하세요", 1, len(raw)-2, 5)
 
@@ -122,7 +122,7 @@ def main():
         r_raw = get_roughness(raw)
         
         perf_df = pd.DataFrame({
-            "알고리즘": ["단순 평균", "해밍 거리", "퍼셉트론"],
+            "알고리즘": ["이동 평균", "해밍 거리", "퍼셉트론"],
             "유지율": [f"{get_stability(ma_res, raw):.1f}%", f"{get_stability(hd_res, raw):.1f}%", f"{get_stability(nn_res, raw):.1f}%"],
             "거칠기(점수)": [get_roughness(ma_res), get_roughness(hd_res), get_roughness(nn_res)],
             "노이즈제거율": [
@@ -147,7 +147,7 @@ def main():
     c1, c2, c3 = st.columns(3)
     
     with c1:
-        st.markdown("### 1. 단순 평균 (MA)")
+        st.markdown("### 1. 이동 평균 (MA)")
         val = (v_p + v_c + v_n) / 3
         st.latex(rf"y_i = \text{{round}}\left(\frac{{x_{{i-1}} + x_i + x_{{i+1}}}}{{3}}\right)")
         st.write(f"계산: ({v_p} + {v_c} + {v_n}) / 3 = **{val:.2f}**")
