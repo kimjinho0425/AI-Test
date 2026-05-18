@@ -66,26 +66,26 @@ def main():
     st.set_page_config(layout="wide", page_title="PLC Filter Expert System", page_icon="🏭")
     
     with st.container():
-        st.title("🏭 PLC 필터 정밀 진단 시스템")
+        st.title("PLC 필터 진단 시스템")
         st.markdown("수학적 수식과 가중치 연산 과정을 실시간으로 추적하는 통합 엔지니어링 환경입니다.")
         st.divider()
 
     # --- 사이드바 ---
     with st.sidebar:
-        st.header("📥 1. 데이터 입력")
+        st.header("1. 데이터 입력")
         sample_data = "0000010000000101011111110111111111000000010000"
         custom_input = st.text_area("센서 데이터 (0, 1)", value=sample_data, height=100)
         raw = [int(c) for c in custom_input if c in '01']
         
         st.divider()
         
-        st.header("⚙️ 2. 퍼셉트론 튜닝")
+        st.header("2. 퍼셉트론 튜닝")
         w_p = st.slider("W_past (이전 값)", 0.0, 2.0, 0.7, 0.1, help="이전 데이터가 현재 판정에 미치는 영향력")
         w_c = st.slider("W_curr (현재 값)", 0.0, 2.0, 1.2, 0.1, help="현재 수집된 데이터의 신뢰도")
         w_n = st.slider("W_next (다음 값)", 0.0, 2.0, 0.7, 0.1, help="다음 데이터의 경향성 반영도")
         bias = st.slider("Bias (편향)", -2.0, 0.0, -1.0, 0.1, help="결과를 1로 판정하기 위한 허들값 (음수일수록 엄격)")
 
-        if st.button("🚀 최적 Bias 자동 탐색", use_container_width=True):
+        if st.button("최적 Bias 자동 탐색", use_container_width=True):
             best_r = float('inf')
             best_b = bias
             for test_b in [round(x * -0.1, 2) for x in range(0, 21)]:
@@ -105,11 +105,11 @@ def main():
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.subheader("📊 실시간 필터링 비교")
+        st.subheader("필터링 비교")
         fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.05)
         plots = [(raw, '원본 입력', 'red'), (ma_res, '단순 평균', 'purple'), (hd_res, '해밍 거리', 'green'), (nn_res, '퍼셉트론', 'orange')]
         
-        calc_idx = st.slider("🔍 상세 분석할 인덱스를 선택하세요", 1, len(raw)-2, 5)
+        calc_idx = st.slider("상세 분석할 인덱스를 선택하세요", 1, len(raw)-2, 5)
 
         for i, (d, n, c) in enumerate(plots):
             fig.add_trace(go.Scatter(y=d, name=n, line=dict(color=c, width=2, shape='hv')), row=i+1, col=1)
@@ -136,12 +136,12 @@ def main():
         st.table(perf_df)
         st.metric("원본 데이터 거칠기", f"{r_raw} 점")
         
-        with st.expander("💡 지표 해석 가이드", expanded=True):
+        with st.expander("지표 해석", expanded=True):
             st.caption("• **유지율:** 원본 데이터 특성을 얼마나 보존했는가?\n• **거칠기:** 선이 꺾이는 횟수 (낮을수록 안정적)\n• **제거율:** 불필요한 노이즈를 얼마나 깎아냈는가?")
 
     # --- 하단: 상세 계산 프로세스 ---
     st.divider()
-    st.header(f"🧮 인덱스 {calc_idx}의 단계별 계산 과정")
+    st.header(f"인덱스 {calc_idx}의 단계별 계산 과정")
     v_p, v_c, v_n = raw[calc_idx-1], raw[calc_idx], raw[calc_idx+1]
     st.markdown(f"**현재 관찰 윈도우:** 이전 : `{v_p}` , 현재 : `{v_c}` , 다음 : `{v_n}`")
 
